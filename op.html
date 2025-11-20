@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>오픽 스크립트 반복 재생기</title>
+
+    <!-- 아이폰 홈 화면 추가용 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px 15px 80px;
+            background-color: #f4f4f9;
+        }
+        h2 { color: #333; text-align: center; }
+        .container {
+            background: white;
+            padding: 20px 15px 80px;
+            border-radius: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
+        textarea {
+            width: 100%;
+            height: 80px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            resize: vertical;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input[type="number"] {
+            width: 70px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 15px;
+            transition: 0.2s;
+        }
+        .btn-add { background-color: #4CAF50; color: white; }
+        .btn-play { background-color: #2196F3; color: white; }
+        .btn-stop { background-color: #f44336; color: white; }
+        .btn-clear { background-color: #9e9e9e; color: white; }
+        .list-area { margin-top: 20px; }
+        .script-item {
+            background: #e3f2fd;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 5px solid #2196F3;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .script-item.active-item {
+            background: #bbdefb;
+            border-left-color: #1565c0;
+        }
+        .script-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+            gap: 6px;
+        }
+        .script-buttons {
+            display: flex;
+            gap: 4px;
+        }
+        .script-btn {
+            flex: 0 0 auto;
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+        }
+        .script-btn-edit { background-color: #ffb300; color: #fff; }
+        .script-btn-delete { background-color: #d32f2f; color: #fff; }
+        .script-btn-toggle { background-color: #90a4ae; color: #fff; }
+
+        .script-detail {
+            margin-top: 6px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .script-detail.collapsed {
+            display: none;
+        }
+
+        .status {
+            text-align: center;
+            margin-top: 10px;
+            color: #ff5722;
+            font-weight: bold;
+            min-height: 20px;
+            font-size: 14px;
+        }
+        .sticky-controls {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 8px 12px 12px;
+            background: rgba(255,255,255,0.96);
+            border-top: 1px solid #eee;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.06);
+        }
+        .small-label {
+            font-size: 13px;
+            font-weight: normal;
+            color: #777;
+        }
+        select, input[type="range"] {
+            width: 100%;
+            margin-top: 3px;
+            margin-bottom: 8px;
+            padding: 5px;
+            font-size: 13px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+        .row-2 {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .row-2 > div {
+            flex: 1;
+            min-width: 130px;
+        }
+        .hint-text {
+            font-size: 12px;
+            color: #777;
+            margin-top: 4px;
+        }
+        .set-input {
+            width: 100%;
+            padding: 6px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🗣️ 오픽 쉐도잉 플레이어</h2>
+
+    <!-- 음성 설정 영역 -->
+    <div class="input-group">
+        <label>음성 설정</label>
+        <div>
+            <span class="small-label">Voice (목소리 선택)</span>
+            <select id="voiceSelect">
+                <option value="">기본 시스템 음성 사용</option>
+            </select>
+        </div>
+        <div class="row-2">
+            <div>
+                <span class="small-label">속도 (0.6 ~ 1.4)</span>
+                <input type="range" id="rateRange" min="0.6" max="1.4" step="0.05" value="0.9">
+                <span id="rateValue" class="hint-text">현재: 0.9</span>
+            </div>
+            <div>
+                <span class="small-label">질문/답변 사이 간격 (초)</span>
+                <input type="number" id="gapSec" min="0" max="5" value="1">
+            </div>
+        </div>
+        <p class="hint-text">※ iOS에서는 사파리에서 한 번 재생 버튼을 눌러야 음성 합성이 동작합니다.</p>
+    </div>
+
+    <!-- ✅ 세트 관리 영역 -->
+    <div class="input-group">
+        <label>세트 관리</label>
+        <div class="row-2">
+            <div>
+                <span class="small-label">저장된 세트 선택</span>
+                <select id="setSelect">
+                    <option value="">저장된 세트 없음</option>
+                </select>
+            </div>
+            <div>
+                <span class="small-label">새 세트 이름</span>
+                <input type="text" id="setNameInput" class="set-input" placeholder="예: 집 & 날씨 세트">
+            </div>
+        </div>
+        <div class="controls" style="margin-top: 8px;">
+            <button style="background-color:#673ab7;color:#fff;" onclick="saveCurrentSet()">현재 목록 세트 저장</button>
+            <button style="background-color:#00897b;color:#fff;" onclick="loadSelectedSet()">세트 불러오기</button>
+            <button style="background-color:#b0bec5;color:#333;" onclick="deleteSelectedSet()">세트 삭제</button>
+        </div>
+        <p class="hint-text">세트로 저장해 두면 주제별(집, 날씨, 취미 등)로 골라서 들을 수 있습니다.</p>
+    </div>
+    
+    <!-- Q/A 입력 -->
+    <div class="input-group">
+        <label>Q. 질문 입력 (영어)</label>
+        <textarea id="questionText" placeholder="예: Tell me about yourself."></textarea>
+        <label>질문 반복 횟수: 
+            <input type="number" id="qRepeat" value="2" min="1">
+        </label>
+    </div>
+
+    <div class="input-group">
+        <label>A. 답변 스크립트 입력 (영어)</label>
+        <textarea id="answerText" placeholder="예: I live in Seoul..."></textarea>
+        <label>답변 반복 횟수: 
+            <input type="number" id="aRepeat" value="5" min="1">
+        </label>
+    </div>
+
+    <div class="controls">
+        <button class="btn-add" id="addBtn" onclick="addOrUpdateScript()">목록에 추가</button>
+        <button class="btn-clear" onclick="clearList()">초기화</button>
+    </div>
+
+    <!-- 목록 -->
+    <div class="list-area" id="playList"></div>
+
+    <div class="status" id="statusMsg"></div>
+</div>
+
+<!-- 하단 고정 재생 버튼 -->
+<div class="sticky-controls">
+    <div class="controls" style="margin-top: 0;">
+        <button class="btn-play" onclick="playAll()">▶ 전체 재생 (무한 반복)</button>
+        <button class="btn-stop" onclick="stopAll()">⏹ 정지</button>
+    </div>
+</div>
+
+<script>
+    let playQueue = [];
+    let isPlaying = false;
+    let synth = window.speechSynthesis;
+    let currentUtterance = null;
+    let voices = [];
+    let editingIndex = null; // 현재 수정 중인 인덱스
+    let currentIndex = null; // 현재 재생 중인 인덱스
+    let expandedDetails = new Set(); // 펼쳐진 카드 인덱스
+
+    const statusEl = document.getElementById('statusMsg');
+    const voiceSelect = document.getElementById('voiceSelect');
+    const rateRange = document.getElementById('rateRange');
+    const rateValue = document.getElementById('rateValue');
+    const addBtn = document.getElementById('addBtn');
+
+    // ---------- localStorage 키 ----------
+    const STORAGE_KEY = 'opic_play_queue_v1';
+    const SET_STORAGE_KEY = 'opic_sets_v1';
+
+    let sets = {}; // {세트명: [items...]}
+
+    // ---------- localStorage: 목록 ----------
+    function saveQueue() {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(playQueue));
+        } catch (e) {
+            console.warn('localStorage 저장 실패', e);
+        }
+    }
+
+    function loadQueue() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+            const data = JSON.parse(raw);
+            if (Array.isArray(data)) {
+                playQueue = data.map(item => ({
+                    q: item.q || '',
+                    qCnt: item.qCnt || 1,
+                    a: item.a || '',
+                    aCnt: item.aCnt || 1
+                }));
+                renderList();
+            }
+        } catch (e) {
+            console.warn('localStorage 불러오기 실패', e);
+        }
+    }
+
+    // ---------- localStorage: 세트 ----------
+    function loadSetsFromStorage() {
+        try {
+            const raw = localStorage.getItem(SET_STORAGE_KEY);
+            if (!raw) {
+                sets = {};
+                populateSetSelect();
+                return;
+            }
+            const data = JSON.parse(raw);
+            if (data && typeof data === 'object') {
+                sets = data;
+            } else {
+                sets = {};
+            }
+        } catch (e) {
+            console.warn('세트 불러오기 실패', e);
+            sets = {};
+        }
+        populateSetSelect();
+    }
+
+    function saveSetsToStorage() {
+        try {
+            localStorage.setItem(SET_STORAGE_KEY, JSON.stringify(sets));
+        } catch (e) {
+            console.warn('세트 저장 실패', e);
+        }
+    }
+
+    function populateSetSelect() {
+        const sel = document.getElementById('setSelect');
+        sel.innerHTML = '';
+        const names = Object.keys(sets);
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = names.length ? '세트를 선택하세요' : '저장된 세트 없음';
+        sel.appendChild(defaultOpt);
+
+        names.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            sel.appendChild(opt);
+        });
+    }
+
+    function saveCurrentSet() {
+        if (playQueue.length === 0) {
+            alert('저장할 목록이 없습니다.');
+            return;
+        }
+        const nameInput = document.getElementById('setNameInput');
+        let name = nameInput.value.trim();
+        if (!name) {
+            name = prompt('세트 이름을 입력하세요', '');
+            if (!name) return;
+        }
+
+        if (sets[name] && !confirm('이미 같은 이름의 세트가 있습니다. 덮어쓸까요?')) {
+            return;
+        }
+
+        // 깊은 복사
+        sets[name] = playQueue.map(item => ({
+            q: item.q,
+            qCnt: item.qCnt,
+            a: item.a,
+            aCnt: item.aCnt
+        }));
+
+        saveSetsToStorage();
+        populateSetSelect();
+        document.getElementById('setSelect').value = name;
+        statusEl.innerText = `"${name}" 세트로 저장되었습니다.`;
+    }
+
+    function loadSelectedSet() {
+        const sel = document.getElementById('setSelect');
+        const name = sel.value;
+        if (!name || !sets[name]) {
+            alert('불러올 세트를 선택하세요.');
+            return;
+        }
+        if (!confirm(`"${name}" 세트를 불러와 현재 목록을 바꿀까요?`)) return;
+
+        playQueue = sets[name].map(item => ({
+            q: item.q || '',
+            qCnt: item.qCnt || 1,
+            a: item.a || '',
+            aCnt: item.aCnt || 1
+        }));
+        expandedDetails.clear();
+        currentIndex = null;
+        saveQueue();
+        renderList();
+        statusEl.innerText = `"${name}" 세트를 불러왔습니다.`;
+    }
+
+    function deleteSelectedSet() {
+        const sel = document.getElementById('setSelect');
+        const name = sel.value;
+        if (!name || !sets[name]) {
+            alert('삭제할 세트를 선택하세요.');
+            return;
+        }
+        if (!confirm(`"${name}" 세트를 삭제할까요?`)) return;
+
+        delete sets[name];
+        saveSetsToStorage();
+        populateSetSelect();
+        sel.value = '';
+        statusEl.innerText = `"${name}" 세트가 삭제되었습니다.`;
+    }
+
+    // ---------- 음성 설정 ----------
+    rateRange.addEventListener('input', () => {
+        rateValue.innerText = '현재: ' + rateRange.value;
+    });
+
+    function loadVoicesList() {
+        const available = speechSynthesis.getVoices();
+        if (!available || available.length === 0) return;
+
+        voices = available;
+
+        const currentValue = voiceSelect.value;
+        voiceSelect.innerHTML = '<option value="">기본 시스템 음성 사용</option>';
+
+        const preferred = voices.filter(v => v.lang.startsWith('en') || v.lang.startsWith('ko'));
+        const others = voices.filter(v => !v.lang.startsWith('en') && !v.lang.startsWith('ko'));
+
+        [...preferred, ...others].forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.name;
+            opt.textContent = v.name + ' (' + v.lang + ')';
+            voiceSelect.appendChild(opt);
+        });
+
+        if (currentValue) {
+            const found = Array.from(voiceSelect.options).find(o => o.value === currentValue);
+            if (found) voiceSelect.value = currentValue;
+        }
+    }
+
+    if (typeof speechSynthesis !== 'undefined') {
+        setTimeout(loadVoicesList, 200);
+        speechSynthesis.onvoiceschanged = loadVoicesList;
+    }
+
+    // ---------- 스크립트 추가/수정 ----------
+    function addOrUpdateScript() {
+        const qText = document.getElementById('questionText').value.trim();
+        const qCount = parseInt(document.getElementById('qRepeat').value) || 1;
+        const aText = document.getElementById('answerText').value.trim();
+        const aCount = parseInt(document.getElementById('aRepeat').value) || 1;
+
+        if (!qText && !aText) {
+            alert('질문이나 답변 중 하나는 입력해야 합니다.');
+            return;
+        }
+
+        const newItem = { q: qText, qCnt: qCount, a: aText, aCnt: aCount };
+
+        if (editingIndex !== null) {
+            playQueue[editingIndex] = newItem;
+            editingIndex = null;
+            addBtn.textContent = '목록에 추가';
+            statusEl.innerText = '수정이 완료되었습니다.';
+        } else {
+            playQueue.push(newItem);
+            statusEl.innerText = '목록에 추가되었습니다.';
+        }
+
+        saveQueue();
+        renderList();
+        clearInputOnly();
+    }
+
+    function clearInputOnly() {
+        document.getElementById('questionText').value = '';
+        document.getElementById('answerText').value = '';
+        document.getElementById('qRepeat').value = 2;
+        document.getElementById('aRepeat').value = 5;
+        document.getElementById('questionText').focus();
+    }
+
+    function startEdit(index) {
+        const item = playQueue[index];
+        document.getElementById('questionText').value = item.q;
+        document.getElementById('answerText').value = item.a;
+        document.getElementById('qRepeat').value = item.qCnt;
+        document.getElementById('aRepeat').value = item.aCnt;
+
+        editingIndex = index;
+        addBtn.textContent = '수정 완료';
+        statusEl.innerText = `#${index + 1} 스크립트를 수정 중입니다. 수정 후 "수정 완료"를 눌러주세요.`;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function deleteItem(index) {
+        if (!confirm(`#${index + 1} 스크립트를 삭제할까요?`)) return;
+        playQueue.splice(index, 1);
+        saveQueue();
+        renderList();
+        statusEl.innerText = '삭제되었습니다.';
+
+        if (editingIndex === index) {
+            editingIndex = null;
+            addBtn.textContent = '목록에 추가';
+            clearInputOnly();
+        }
+        if (currentIndex === index) {
+            currentIndex = null;
+        }
+    }
+
+    function clearList() {
+        if (!confirm('모든 스크립트를 초기화할까요?')) return;
+        playQueue = [];
+        expandedDetails.clear();
+        currentIndex = null;
+        saveQueue();
+        renderList();
+        stopAll();
+        editingIndex = null;
+        addBtn.textContent = '목록에 추가';
+        statusEl.innerText = '목록이 모두 삭제되었습니다.';
+    }
+
+    function setCurrentIndex(idx) {
+        currentIndex = idx;
+        renderList();
+    }
+
+    function toggleDetail(event, index) {
+        event.stopPropagation(); // 카드 클릭 재생 막기
+        if (expandedDetails.has(index)) {
+            expandedDetails.delete(index);
+        } else {
+            expandedDetails.add(index);
+        }
+        renderList();
+    }
+
+    // ---------- 목록 렌더링 ----------
+    function renderList() {
+        const listDiv = document.getElementById('playList');
+        listDiv.innerHTML = '';
+        playQueue.forEach((item, index) => {
+            const isActive = currentIndex === index;
+            const isExpanded = expandedDetails.has(index);
+            const detailClass = isExpanded ? 'script-detail' : 'script-detail collapsed';
+            const toggleLabel = isExpanded ? '접기' : '펼치기';
+
+            const qText = item.q || '(질문 없음)';
+            const aText = item.a || '(답변 없음)';
+
+            listDiv.innerHTML += `
+                <div class="script-item ${isActive ? 'active-item' : ''}" onclick="playSingle(${index})">
+                    <div class="script-header">
+                        <strong>#${index + 1}</strong>
+                        <div class="script-buttons">
+                            <button class="script-btn script-btn-toggle" onclick="toggleDetail(event, ${index})">${toggleLabel}</button>
+                            <button class="script-btn script-btn-edit" onclick="event.stopPropagation(); startEdit(${index});">수정</button>
+                            <button class="script-btn script-btn-delete" onclick="event.stopPropagation(); deleteItem(${index});">삭제</button>
+                        </div>
+                    </div>
+                    <div>
+                        <small>Q 반복 ${item.qCnt}회 / A 반복 ${item.aCnt}회</small>
+                    </div>
+                    <div class="${detailClass}">
+                        <div><strong>Q:</strong> ${qText.replace(/\n/g, '<br>')}</div>
+                        <div style="margin-top:4px;"><strong>A:</strong> ${aText.replace(/\n/g, '<br>')}</div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // ---------- 말하기 / 재생 ----------
+    function speak(text, lang = 'en-US') {
+        return new Promise((resolve, reject) => {
+            if (!text) { resolve(); return; }
+
+            if (voices.length === 0) {
+                loadVoicesList();
+            }
+
+            const utterance = new SpeechSynthesisUtterance(text);
+
+            const selectedName = voiceSelect.value;
+            let selectedVoice = null;
+
+            if (selectedName && voices.length > 0) {
+                selectedVoice = voices.find(v => v.name === selectedName);
+            }
+
+            if (selectedVoice) {
+                utterance.voice = selectedVoice;
+                utterance.lang = selectedVoice.lang;
+            } else {
+                utterance.lang = lang;
+            }
+
+            utterance.rate = parseFloat(rateRange.value) || 0.9;
+
+            utterance.onend = () => resolve();
+            utterance.onerror = (e) => reject(e);
+
+            currentUtterance = utterance;
+            synth.speak(utterance);
+        });
+    }
+
+    function wait(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // 전체 무한 재생
+    async function playAll() {
+        if (playQueue.length === 0) {
+            alert('재생할 목록이 없습니다.');
+            return;
+        }
+        if (isPlaying) return;
+
+        isPlaying = true;
+        statusEl.innerText = '재생 중...';
+
+        const gapMs = (parseFloat(document.getElementById('gapSec').value) || 1) * 1000;
+
+        while (isPlaying) {
+            for (let i = 0; i < playQueue.length; i++) {
+                if (!isPlaying) break;
+                
+                const item = playQueue[i];
+                setCurrentIndex(i);
+
+                for (let k = 0; k < item.qCnt; k++) {
+                    if (!isPlaying) break;
+                    if (item.q) {
+                        statusEl.innerText = `#${i + 1} Q 재생 중... (${k + 1}/${item.qCnt})`;
+                        await speak(item.q);
+                        await wait(gapMs);
+                    }
+                }
+
+                for (let j = 0; j < item.aCnt; j++) {
+                    if (!isPlaying) break;
+                    if (item.a) {
+                        statusEl.innerText = `#${i + 1} A 재생 중... (${j + 1}/${item.aCnt})`;
+                        await speak(item.a);
+                        await wait(gapMs);
+                    }
+                }
+
+                await wait(2000);
+            }
+        }
+        setCurrentIndex(null);
+    }
+
+    // ✅ 카드 터치 시 해당 항목만 1세트 재생
+    async function playSingle(index) {
+        if (index < 0 || index >= playQueue.length) return;
+
+        // 다른 재생 중이면 정지
+        if (isPlaying) {
+            stopAll();
+            await wait(200);
+        }
+
+        isPlaying = true;
+        const item = playQueue[index];
+        setCurrentIndex(index);
+
+        const gapMs = (parseFloat(document.getElementById('gapSec').value) || 1) * 1000;
+
+        // 질문 반복
+        for (let k = 0; k < item.qCnt; k++) {
+            if (!isPlaying) break;
+            if (item.q) {
+                statusEl.innerText = `#${index + 1} Q 재생 중... (${k + 1}/${item.qCnt})`;
+                await speak(item.q);
+                await wait(gapMs);
+            }
+        }
+
+        // 답변 반복
+        for (let j = 0; j < item.aCnt; j++) {
+            if (!isPlaying) break;
+            if (item.a) {
+                statusEl.innerText = `#${index + 1} A 재생 중... (${j + 1}/${item.aCnt})`;
+                await speak(item.a);
+                await wait(gapMs);
+            }
+        }
+
+        isPlaying = false;
+        setCurrentIndex(null);
+        statusEl.innerText = `#${index + 1} 재생이 완료되었습니다.`;
+    }
+
+    function stopAll() {
+        isPlaying = false;
+        synth.cancel();
+        setCurrentIndex(null);
+        statusEl.innerText = '정지됨';
+    }
+
+    // 페이지 로드 시 저장된 목록 & 세트 불러오기
+    window.addEventListener('load', () => {
+        loadQueue();
+        loadSetsFromStorage();
+    });
+</script>
+
+</body>
+</html>
